@@ -17,17 +17,12 @@ import tools.jackson.databind.JsonNode;
 @RestController
 @RequestMapping("/api/core/v1")
 public class CoreController {
-    private final ru.corelia.profile.ProductProfile profile;
     private final ServiceClient services;
     private final ApiRequest requests;
     private final AttachmentService attachments;
 
     public CoreController(
-            ServiceClient services,
-            ApiRequest requests,
-            AttachmentService attachments,
-            ru.corelia.profile.ProductProfile profile) {
-        this.profile = profile;
+            ServiceClient services, ApiRequest requests, AttachmentService attachments) {
         this.services = services;
         this.requests = requests;
         this.attachments = attachments;
@@ -61,9 +56,7 @@ public class CoreController {
     public JsonNode get(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
         var auth = requests.auth(r);
         var doc = copy(services.call("document", path(type) + "/" + encode(id), "GET", null, auth));
-        if (ru.corelia.profile.ProductProfile.strings(profile.type(type).path("operations"))
-                .contains("attachments"))
-            doc.set("attachments", array(attachments.current(id, auth)));
+        doc.set("attachments", array(attachments.current(id, auth)));
         return doc;
     }
 

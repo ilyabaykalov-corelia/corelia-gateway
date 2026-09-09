@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.cache.TaskCache;
 import ru.corelia.http.ApiException;
-import ru.corelia.profile.ProductProfile;
 import ru.corelia.transport.ServiceClient;
 
 import tools.jackson.databind.JsonNode;
@@ -19,24 +18,17 @@ import java.util.*;
 @Service
 public class DocumentService {
     private final ServiceClient services;
-    private final ProductProfile profile;
     private final AttachmentService attachments;
     private final TaskCache cache;
 
-    public DocumentService(
-            ServiceClient services,
-            ProductProfile profile,
-            AttachmentService attachments,
-            TaskCache cache) {
+    public DocumentService(ServiceClient services, AttachmentService attachments, TaskCache cache) {
         this.services = services;
-        this.profile = profile;
         this.attachments = attachments;
         this.cache = cache;
     }
 
     private String path() {
-        if (!profile.legacyEnabled()) throw new ApiException(404, "Совместимый API отключён");
-        return "/internal/v1/documents/" + encode(profile.legacyType());
+        return "/internal/v1/documents/" + "PDS_CONTRACT";
     }
 
     public JsonNode raw(String id, AuthContext auth) {
@@ -61,7 +53,7 @@ public class DocumentService {
 
     public JsonNode search(JsonNode body, AuthContext auth) {
         String type = text(body, "documentTypeId");
-        if (!type.isEmpty() && !profile.legacyType().equals(type))
+        if (!type.isEmpty() && !"PDS_CONTRACT".equals(type))
             return object("items", List.of(), "total", 0);
         JsonNode response = services.call("document", path() + "/search", "POST", body, auth);
         return object(
@@ -93,23 +85,14 @@ public class DocumentService {
 
     private JsonNode payload(JsonNode body) {
         parsePayload(body);
-        String type = fallback(text(body, "documentTypeId"), profile.legacyType());
-        if (!profile.legacyType().equals(type))
+        String type = fallback(text(body, "documentTypeId"), "PDS_CONTRACT");
+        if (!"PDS_CONTRACT".equals(type))
             throw new ApiException(
                     400, "Этот тип документа доступен через универсальный API Corelia");
         ObjectNode attributes = object();
-        profile.settings("legacy")
-                .path("fieldAliases")
-                .properties()
-                .forEach(
-                        e -> {
-                            String value =
-                                    first(
-                                            body,
-                                            ProductProfile.strings(e.getValue())
-                                                    .toArray(String[]::new));
-                            attributes.put(e.getKey(), value);
-                        });
+        attributes.put("contractDate", first(body, "contractDate", "date", "outgoingDocumentDate"));
+        attributes.put("contractNumber", first(body, "contractNumber", "number", "outgoingNumber"));
+        attributes.put("snils", text(body, "snils"));
         return object("attributes", attributes);
     }
 

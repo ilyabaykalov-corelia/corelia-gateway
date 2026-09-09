@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import ru.corelia.auth.AuthContext;
 import ru.corelia.http.ApiException;
-import ru.corelia.profile.ProductProfile;
 import ru.corelia.transport.ServiceClient;
 
 import tools.jackson.databind.JsonNode;
@@ -17,11 +16,9 @@ import java.util.*;
 @Component
 public class WorkflowClient {
     private final ServiceClient services;
-    private final ProductProfile profile;
 
-    public WorkflowClient(ServiceClient services, ProductProfile profile) {
+    public WorkflowClient(ServiceClient services) {
         this.services = services;
-        this.profile = profile;
     }
 
     public JsonNode taskList(String path, JsonNode body, Map<String, ?> query, AuthContext auth) {
