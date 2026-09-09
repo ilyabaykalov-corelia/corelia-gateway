@@ -334,7 +334,7 @@ public class TaskService {
         cache.invalidate();
         JsonNode updated = documents.get(documentId, auth);
         for (int attempt = 0;
-                attempt < 4 && !status.name().equals(text(updated, "approvalStatus"));
+                attempt < 20 && !status.name().equals(text(updated, "approvalStatus"));
                 attempt++) {
             DocumentService.pause(250);
             updated = documents.get(documentId, auth);

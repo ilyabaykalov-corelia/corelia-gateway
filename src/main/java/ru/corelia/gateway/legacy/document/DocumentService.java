@@ -46,6 +46,33 @@ public class DocumentService {
         return result;
     }
 
+    public JsonNode versions(String id, AuthContext auth) {
+        JsonNode response =
+                services.call(
+                        "document",
+                        path() + "/" + encode(id) + "/versions",
+                        "GET",
+                        null,
+                        auth);
+        List<JsonNode> currentAttachments = attachments.current(id, auth);
+        return array(
+                list(response).stream()
+                        .map(document -> {
+                            ObjectNode result = legacy(document);
+                            result.set("attachments", array(currentAttachments));
+                            return result;
+                        })
+                        .toList());
+    }
+
+    public ObjectNode version(String id, int version, AuthContext auth) {
+        return list(versions(id, auth)).stream()
+                .filter(item -> item.path("version").asInt() == version)
+                .map(item -> (ObjectNode) item)
+                .findFirst()
+                .orElseThrow(() -> new ApiException(404, "Версия документа не найдена"));
+    }
+
     public JsonNode types(AuthContext auth) {
         return services.call(
                 "document", "/internal/v1/document-types/available", "GET", null, auth);

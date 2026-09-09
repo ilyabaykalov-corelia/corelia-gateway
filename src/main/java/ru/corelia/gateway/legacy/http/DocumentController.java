@@ -60,6 +60,17 @@ public class DocumentController {
         return tasks.withWorkflow(documents.get(id, auth), auth);
     }
 
+    @GetMapping("/document/{id}/versions")
+    public JsonNode versions(@PathVariable String id, HttpServletRequest request) {
+        return documents.versions(id, requests.auth(request));
+    }
+
+    @GetMapping("/document/{id}/versions/{version}")
+    public JsonNode version(
+            @PathVariable String id, @PathVariable int version, HttpServletRequest request) {
+        return documents.version(id, version, requests.auth(request));
+    }
+
     @PatchMapping("/document/{id}")
     public JsonNode update(@PathVariable String id, HttpServletRequest request) {
         return documents.update(id, requests.body(request), requests.auth(request));
@@ -102,7 +113,7 @@ public class DocumentController {
     }
 
     @GetMapping("/attachment/{id}/versions")
-    public JsonNode versions(@PathVariable String id, HttpServletRequest request) {
+    public JsonNode attachmentVersions(@PathVariable String id, HttpServletRequest request) {
         return array(attachments.previous(id, requests.auth(request)));
     }
 
