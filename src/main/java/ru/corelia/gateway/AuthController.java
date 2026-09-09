@@ -21,23 +21,23 @@ public class AuthController {
         this.requests = requests;
     }
 
-    @PostMapping({"/api/v1/auth/login", "/api/core/v1/auth/login"})
+    @PostMapping("/api/core/v1/auth/login")
     public JsonNode login(HttpServletRequest r) {
         return services.call("auth", "/internal/v1/auth/login", "POST", requests.body(r), null);
     }
 
-    @PostMapping({"/api/v1/auth/refresh", "/api/core/v1/auth/refresh"})
+    @PostMapping("/api/core/v1/auth/refresh")
     public JsonNode refresh(HttpServletRequest r) {
         return services.call("auth", "/internal/v1/auth/refresh", "POST", requests.body(r), null);
     }
 
-    @PostMapping({"/api/v1/auth/logout", "/api/core/v1/auth/logout"})
+    @PostMapping("/api/core/v1/auth/logout")
     public ResponseEntity<Void> logout(HttpServletRequest r) {
         services.call("auth", "/internal/v1/auth/logout", "POST", requests.body(r), null);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping({"/api/v1/user", "/api/v1/auth/me", "/api/core/v1/auth/me"})
+    @GetMapping("/api/core/v1/auth/me")
     public JsonNode me(HttpServletRequest r) {
         return services.call("auth", "/internal/v1/auth/me", "GET", null, requests.auth(r));
     }

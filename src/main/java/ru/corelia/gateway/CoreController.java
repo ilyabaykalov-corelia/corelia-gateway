@@ -7,22 +7,22 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import ru.corelia.gateway.legacy.document.AttachmentService;
+import ru.corelia.auth.AuthContext;
 import ru.corelia.http.ApiRequest;
 import ru.corelia.transport.ServiceClient;
 
 import tools.jackson.databind.JsonNode;
 
-/** Универсальный внешний API; не зависит от полей ПДС и старого интерфейса React. */
+/** Универсальный внешний API для документов, вложений и задач. */
 @RestController
 @RequestMapping("/api/core/v1")
 public class CoreController {
     private final ServiceClient services;
     private final ApiRequest requests;
-    private final AttachmentService attachments;
+    private final AttachmentClient attachments;
 
     public CoreController(
-            ServiceClient services, ApiRequest requests, AttachmentService attachments) {
+            ServiceClient services, ApiRequest requests, AttachmentClient attachments) {
         this.services = services;
         this.requests = requests;
         this.attachments = attachments;
@@ -56,7 +56,8 @@ public class CoreController {
     public JsonNode get(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
         var auth = requests.auth(r);
         var doc = copy(services.call("document", path(type) + "/" + encode(id), "GET", null, auth));
-        doc.set("attachments", array(attachments.current(id, auth)));
+        doc.set("attachments", array(attachments.current(type, id, auth)));
+        doc.set("workflow", terminal(doc) ? emptyWorkflow() : workflow(type, id, auth));
         return doc;
     }
 
@@ -76,7 +77,7 @@ public class CoreController {
             @PathVariable String type, @PathVariable String id, HttpServletRequest r) {
         var auth = requests.auth(r);
         services.call("document", path(type) + "/" + encode(id), "GET", null, auth);
-        return array(attachments.current(id, auth));
+        return array(attachments.current(type, id, auth));
     }
 
     @GetMapping("/documents/{type}/{id}/versions")
@@ -88,7 +89,7 @@ public class CoreController {
     public JsonNode documentVersion(@PathVariable String type, @PathVariable String id, @PathVariable int version, HttpServletRequest r) {
         var auth = requests.auth(r);
         var doc = copy(services.call("document", path(type) + "/" + encode(id) + "/versions/" + version, "GET", null, auth));
-        doc.set("attachments", array(attachments.current(id, auth)));
+        doc.set("attachments", array(attachments.atHead(type, id, text(doc, "attachmentsHead"), auth)));
         return doc;
     }
 
@@ -98,7 +99,7 @@ public class CoreController {
         var auth = requests.auth(r);
         services.call("document", path(type) + "/" + encode(id), "GET", null, auth);
         return ResponseEntity.status(201)
-                .body(array(attachments.upload(id, requests.body(r), auth)));
+                .body(array(attachments.upload(type, id, requests.body(r), auth)));
     }
 
     @RequestMapping(
@@ -171,6 +172,38 @@ public class CoreController {
                 "POST",
                 requests.body(r),
                 requests.auth(r));
+    }
+
+    @GetMapping("/documents/{type}/{id}/workflow")
+    public JsonNode documentWorkflow(
+            @PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        var document = services.call("document", path(type) + "/" + encode(id), "GET", null, auth);
+        return terminal(document) ? emptyWorkflow() : workflow(type, id, auth);
+    }
+
+    @GetMapping("/tasks/summary")
+    public JsonNode summary(HttpServletRequest r) {
+        return services.call(
+                "workflow", "/internal/v1/tasks/summary", "GET", null, requests.auth(r));
+    }
+
+    private JsonNode workflow(String type, String id, AuthContext auth) {
+        return services.call(
+                "workflow",
+                "/internal/v1/documents/" + encode(type) + "/" + encode(id) + "/workflow",
+                "GET",
+                null,
+                auth);
+    }
+
+    private static boolean terminal(JsonNode document) {
+        return java.util.Set.of("APPROVED", "REJECTED")
+                .contains(text(document, "status"));
+    }
+
+    private static JsonNode emptyWorkflow() {
+        return object("task", null, "availableActions", java.util.List.of(), "executor", null);
     }
 
     private static String path(String type) {
