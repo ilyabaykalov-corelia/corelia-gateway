@@ -79,6 +79,19 @@ public class CoreController {
         return array(attachments.current(id, auth));
     }
 
+    @GetMapping("/documents/{type}/{id}/versions")
+    public JsonNode documentVersions(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        return services.call("document", path(type) + "/" + encode(id) + "/versions", "GET", null, requests.auth(r));
+    }
+
+    @GetMapping("/documents/{type}/{id}/versions/{version}")
+    public JsonNode documentVersion(@PathVariable String type, @PathVariable String id, @PathVariable int version, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        var doc = copy(services.call("document", path(type) + "/" + encode(id) + "/versions/" + version, "GET", null, auth));
+        doc.set("attachments", array(attachments.current(id, auth)));
+        return doc;
+    }
+
     @PostMapping("/documents/{type}/{id}/attachments")
     public ResponseEntity<JsonNode> upload(
             @PathVariable String type, @PathVariable String id, HttpServletRequest r) {
