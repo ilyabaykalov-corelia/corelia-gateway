@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import ru.corelia.auth.AuthContext;
 import ru.corelia.http.ApiRequest;
+import ru.corelia.http.ApiException;
 import ru.corelia.transport.ServiceClient;
 
 import tools.jackson.databind.JsonNode;
@@ -54,10 +55,16 @@ public class CoreController {
 
     @GetMapping("/documents/{type}/{id}")
     public JsonNode get(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
-        var auth = requests.auth(r);
+        return document(type, id, requests.auth(r));
+    }
+
+    private JsonNode document(String type, String id, AuthContext auth) {
         var doc = copy(services.call("document", path(type) + "/" + encode(id), "GET", null, auth));
         doc.set("attachments", array(attachments.current(type, id, auth)));
-        doc.set("workflow", terminal(doc) ? emptyWorkflow() : workflow(type, id, auth));
+        JsonNode context = terminal(doc) ? emptyWorkflow() : workflow(type, id, auth);
+        doc.set("workflow", context);
+        doc.set("availableActions", context.path("availableActions"));
+        doc.set("executor", context.path("executor"));
         return doc;
     }
 
@@ -78,19 +85,6 @@ public class CoreController {
         var auth = requests.auth(r);
         services.call("document", path(type) + "/" + encode(id), "GET", null, auth);
         return array(attachments.current(type, id, auth));
-    }
-
-    @GetMapping("/documents/{type}/{id}/versions")
-    public JsonNode documentVersions(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
-        return services.call("document", path(type) + "/" + encode(id) + "/versions", "GET", null, requests.auth(r));
-    }
-
-    @GetMapping("/documents/{type}/{id}/versions/{version}")
-    public JsonNode documentVersion(@PathVariable String type, @PathVariable String id, @PathVariable int version, HttpServletRequest r) {
-        var auth = requests.auth(r);
-        var doc = copy(services.call("document", path(type) + "/" + encode(id) + "/versions/" + version, "GET", null, auth));
-        doc.set("attachments", array(attachments.atHead(type, id, text(doc, "attachmentsHead"), auth)));
-        return doc;
     }
 
     @PostMapping("/documents/{type}/{id}/attachments")
@@ -166,12 +160,29 @@ public class CoreController {
 
     @PostMapping("/tasks/{id}/action")
     public JsonNode action(@PathVariable String id, HttpServletRequest r) {
-        return services.call(
-                "workflow",
-                "/internal/v1/tasks/" + encode(id) + "/complete",
-                "POST",
-                requests.body(r),
-                requests.auth(r));
+        var auth = requests.auth(r);
+        JsonNode body = requests.body(r);
+        // Клиент dev передаёт ID задачи из очереди и ID документа из карточки.
+        try {
+            services.call("workflow", "/internal/v1/tasks/" + encode(id), "GET", null, auth);
+        } catch (ApiException error) {
+            if (error.status() != 404) throw error;
+            JsonNode card = document("PDS_CONTRACT", id, auth);
+            String taskId = text(card.path("workflow").path("task"), "id");
+            if (taskId.isEmpty()) throw new ApiException(404, "Активная задача документа не найдена");
+            services.call("workflow", "/internal/v1/tasks/" + encode(taskId) + "/complete", "POST", body, auth);
+            JsonNode updated = document("PDS_CONTRACT", id, auth);
+            var response = copy(updated.path("attributes"));
+            response.put("id", id);
+            response.put("documentTypeId", text(updated, "typeCode"));
+            response.put("documentType", text(updated, "typeName"));
+            response.put("approvalStatus", text(updated, "status"));
+            response.put("documentStatus", text(updated, "statusLabel"));
+            for (String field : java.util.List.of("createdBy", "createdAt", "attachments", "availableActions", "executor"))
+                if (updated.has(field)) response.set(field, updated.path(field));
+            return response;
+        }
+        return services.call("workflow", "/internal/v1/tasks/" + encode(id) + "/complete", "POST", body, auth);
     }
 
     @GetMapping("/documents/{type}/{id}/workflow")

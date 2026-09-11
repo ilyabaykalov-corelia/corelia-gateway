@@ -26,11 +26,6 @@ public class AttachmentClient {
         return list(services.call("attachment", "/internal/v1/documents/" + encode(type) + "/" + encode(id) + "/attachments", "GET", null, auth));
     }
 
-    public List<JsonNode> atHead(String type, String id, String head, AuthContext auth) {
-        if (head == null || head.isBlank()) return List.of();
-        return list(services.call("attachment", "/internal/v1/documents/" + encode(type) + "/" + encode(id) + "/attachments?head=" + encode(head), "GET", null, auth));
-    }
-
     public List<JsonNode> upload(String type, String id, JsonNode body, AuthContext auth) {
         return list(services.call("attachment", "/internal/v1/documents/" + encode(type) + "/" + encode(id) + "/attachments", "POST", body, auth));
     }
