@@ -63,8 +63,6 @@ public class CoreController {
         doc.set("attachments", array(attachments.current(type, id, auth)));
         JsonNode context = terminal(doc) ? emptyWorkflow() : workflow(type, id, auth);
         doc.set("workflow", context);
-        doc.set("availableActions", context.path("availableActions"));
-        doc.set("executor", context.path("executor"));
         return doc;
     }
 
