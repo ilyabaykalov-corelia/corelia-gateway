@@ -60,9 +60,23 @@ public class CoreController {
 
     private JsonNode document(String type, String id, AuthContext auth) {
         var doc = copy(services.call("document", path(type) + "/" + encode(id), "GET", null, auth));
-        doc.set("attachments", array(attachments.current(type, id, auth)));
+        // Attachments belong to the same version snapshot returned by document-service.
         JsonNode context = terminal(doc) ? emptyWorkflow() : workflow(type, id, auth);
         doc.set("workflow", context);
+        doc.set("availableActions", context.path("availableActions"));
+        doc.set("executor", context.path("executor"));
+        return doc;
+    }
+
+    @GetMapping("/documents/{type}/{id}/versions")
+    public JsonNode documentVersions(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        return services.call("document", path(type) + "/" + encode(id) + "/versions", "GET", null, requests.auth(r));
+    }
+    @GetMapping("/documents/{type}/{id}/versions/{version}")
+    public JsonNode documentVersion(@PathVariable String type, @PathVariable String id, @PathVariable int version, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        var doc = copy(services.call("document", path(type) + "/" + encode(id) + "/versions/" + version, "GET", null, auth));
+        doc.set("workflow", terminal(doc) ? emptyWorkflow() : workflow(type, id, auth));
         return doc;
     }
 
@@ -101,7 +115,7 @@ public class CoreController {
         var response =
                 services.raw(
                         "attachment",
-                        "/internal/v1/attachments/" + encode(id),
+                        "/internal/v1/attachments/" + encode(id) + (r.getMethod().equals("DELETE") ? "?requestId=" + encode(fallback(r.getParameter("requestId") == null ? "" : r.getParameter("requestId"), "")) : ""),
                         r.getMethod(),
                         r.getMethod().equals("PUT")
                                 ? write(requests.body(r))
@@ -176,7 +190,7 @@ public class CoreController {
             response.put("documentType", text(updated, "typeName"));
             response.put("approvalStatus", text(updated, "status"));
             response.put("documentStatus", text(updated, "statusLabel"));
-            for (String field : java.util.List.of("createdBy", "createdAt", "attachments", "availableActions", "executor"))
+            for (String field : java.util.List.of("createdBy", "createdAt", "attachments", "availableActions", "executor", "workflow", "version", "currentVersion", "changeToken", "versionCreatedBy", "versionCreatedAt"))
                 if (updated.has(field)) response.set(field, updated.path(field));
             return response;
         }
