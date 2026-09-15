@@ -188,7 +188,7 @@ public class CoreController {
             response.put("id", id);
             response.put("documentTypeId", text(updated, "typeCode"));
             response.put("documentType", text(updated, "typeName"));
-            response.put("approvalStatus", text(updated, "status"));
+            response.put("status", text(updated, "status"));
             response.put("documentStatus", text(updated, "statusLabel"));
             for (String field : java.util.List.of("createdBy", "createdAt", "attachments", "availableActions", "executor", "workflow", "version", "currentVersion", "changeToken", "versionCreatedBy", "versionCreatedAt"))
                 if (updated.has(field)) response.set(field, updated.path(field));
