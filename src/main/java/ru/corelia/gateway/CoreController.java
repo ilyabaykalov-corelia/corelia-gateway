@@ -35,6 +35,18 @@ public class CoreController {
                 "document", "/internal/v1/document-types", "GET", null, requests.auth(r));
     }
 
+    @PostMapping("/documents/search")
+    public JsonNode searchAll(HttpServletRequest r) {
+        return services.call("document", "/internal/v1/documents/search", "POST", requests.body(r), requests.auth(r));
+    }
+
+    @GetMapping("/documents/by-id/{id}")
+    public JsonNode getById(@PathVariable String id, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        JsonNode doc = services.call("document", "/internal/v1/documents/by-id/" + encode(id), "GET", null, auth);
+        return document(text(doc, "typeCode"), id, auth);
+    }
+
     @PostMapping("/documents/{type}/search")
     public JsonNode search(@PathVariable String type, HttpServletRequest r) {
         return services.call(
@@ -179,11 +191,13 @@ public class CoreController {
             services.call("workflow", "/internal/v1/tasks/" + encode(id), "GET", null, auth);
         } catch (ApiException error) {
             if (error.status() != 404) throw error;
-            JsonNode card = document("PDS_CONTRACT", id, auth);
+            JsonNode identity = services.call("document", "/internal/v1/documents/by-id/" + encode(id), "GET", null, auth);
+            String type = text(identity, "typeCode");
+            JsonNode card = document(type, id, auth);
             String taskId = text(card.path("workflow").path("task"), "id");
             if (taskId.isEmpty()) throw new ApiException(404, "Активная задача документа не найдена");
             services.call("workflow", "/internal/v1/tasks/" + encode(taskId) + "/complete", "POST", body, auth);
-            JsonNode updated = document("PDS_CONTRACT", id, auth);
+            JsonNode updated = document(type, id, auth);
             var response = copy(updated.path("attributes"));
             response.put("id", id);
             response.put("documentTypeId", text(updated, "typeCode"));
@@ -221,7 +235,7 @@ public class CoreController {
     }
 
     private static boolean terminal(JsonNode document) {
-        return java.util.Set.of("APPROVED", "REJECTED")
+        return java.util.Set.of("APPROVED", "REJECTED", "STORED")
                 .contains(text(document, "status"));
     }
 
