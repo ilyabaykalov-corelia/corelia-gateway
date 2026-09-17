@@ -35,6 +35,11 @@ public class CoreController {
                 "document", "/internal/v1/document-types", "GET", null, requests.auth(r));
     }
 
+    @GetMapping("/document-types/{type}")
+    public JsonNode definition(@PathVariable String type, HttpServletRequest r) {
+        return services.call("document", "/internal/v1/document-types/" + encode(type), "GET", null, requests.auth(r));
+    }
+
     @PostMapping("/documents/search")
     public JsonNode searchAll(HttpServletRequest r) {
         return services.call("document", "/internal/v1/documents/search", "POST", requests.body(r), requests.auth(r));
@@ -78,6 +83,29 @@ public class CoreController {
         doc.set("availableActions", context.path("availableActions"));
         doc.set("executor", context.path("executor"));
         return doc;
+    }
+
+    @GetMapping("/documents/{type}/{id}/actions")
+    public JsonNode documentActions(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        JsonNode card = document(type, id, auth);
+        JsonNode capabilities = services.call("document", path(type) + "/" + encode(id) + "/capabilities", "GET", null, auth);
+        return object("actions", card.path("availableActions"), "capabilities", capabilities.path("capabilities"));
+    }
+
+    @PostMapping("/documents/{type}/{id}/actions/{action}")
+    public JsonNode documentAction(@PathVariable String type, @PathVariable String id, @PathVariable String action, HttpServletRequest r) {
+        var auth = requests.auth(r);
+        JsonNode card = document(type, id, auth);
+        String taskId = text(card.path("workflow").path("task"), "id");
+        if (taskId.isEmpty()) throw new ApiException(404, "Активная задача документа не найдена");
+        services.call("workflow", "/internal/v1/tasks/" + encode(taskId) + "/complete", "POST", object("actionCode", action), auth);
+        return document(type, id, auth);
+    }
+
+    @GetMapping("/documents/{type}/{id}/capabilities")
+    public JsonNode capabilities(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        return services.call("document", path(type) + "/" + encode(id) + "/capabilities", "GET", null, requests.auth(r));
     }
 
     @GetMapping("/documents/{type}/{id}/versions")
@@ -235,8 +263,7 @@ public class CoreController {
     }
 
     private static boolean terminal(JsonNode document) {
-        return java.util.Set.of("APPROVED", "REJECTED", "STORED")
-                .contains(text(document, "status"));
+        return document.path("workflowCompleted").asBoolean();
     }
 
     private static JsonNode emptyWorkflow() {
