@@ -71,6 +71,29 @@ public class CoreController {
                                 requests.auth(r)));
     }
 
+    @PostMapping(value = "/documents/{type}/stream", consumes = "multipart/form-data")
+    public ResponseEntity<JsonNode> createStream(
+            @PathVariable String type,
+            @RequestParam String requestId,
+            @RequestParam String attributes,
+            @RequestParam MultipartFile file,
+            HttpServletRequest request)
+            throws java.io.IOException {
+        try (var content = file.getInputStream()) {
+            return ResponseEntity.status(201)
+                    .body(
+                            services.callMultipart(
+                                    "document",
+                                    "/internal/v1/documents/" + encode(type) + "/stream",
+                                    "POST",
+                                    java.util.Map.of("requestId", requestId, "attributes", attributes),
+                                    fallback(file.getOriginalFilename(), "attachment.bin"),
+                                    fallback(file.getContentType(), "application/octet-stream"),
+                                    content,
+                                    requests.auth(request)));
+        }
+    }
+
     @GetMapping("/documents/{type}/{id}")
     public JsonNode get(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
         return document(type, id, requests.auth(r));
