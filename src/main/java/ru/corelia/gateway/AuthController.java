@@ -2,7 +2,6 @@ package ru.corelia.gateway;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import ru.corelia.http.ApiRequest;
@@ -19,22 +18,6 @@ public class AuthController {
     public AuthController(ServiceClient services, ApiRequest requests) {
         this.services = services;
         this.requests = requests;
-    }
-
-    @PostMapping("/api/core/v1/auth/login")
-    public JsonNode login(HttpServletRequest r) {
-        return services.call("auth", "/internal/v1/auth/login", "POST", requests.body(r), null);
-    }
-
-    @PostMapping("/api/core/v1/auth/refresh")
-    public JsonNode refresh(HttpServletRequest r) {
-        return services.call("auth", "/internal/v1/auth/refresh", "POST", requests.body(r), null);
-    }
-
-    @PostMapping("/api/core/v1/auth/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest r) {
-        services.call("auth", "/internal/v1/auth/logout", "POST", requests.body(r), null);
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/core/v1/auth/me")
