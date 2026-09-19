@@ -203,7 +203,7 @@ public class CoreController {
 
     @RequestMapping(
             value = "/attachments/{id}",
-            method = {RequestMethod.GET, RequestMethod.PUT, RequestMethod.DELETE})
+            method = {RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<byte[]> file(@PathVariable String id, HttpServletRequest r) {
         var response =
                 services.raw(
@@ -226,6 +226,15 @@ public class CoreController {
                 .firstValue("content-disposition")
                 .ifPresent(v -> result.header("Content-Disposition", v));
         return result.body(response.body());
+    }
+
+    @GetMapping("/attachments/{id}")
+    public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> download(
+            @PathVariable String id, HttpServletRequest r) {
+        var response = services.rawStream("attachment", "/internal/v1/attachments/" + encode(id), requests.auth(r));
+        var result = ResponseEntity.ok().header("Content-Type", response.headers().firstValue("content-type").orElse("application/octet-stream"));
+        response.headers().firstValue("content-disposition").ifPresent(value -> result.header("Content-Disposition", value));
+        return result.body(output -> { try (var input = response.body()) { input.transferTo(output); } });
     }
 
     @PutMapping(value = "/attachments/{id}/stream", consumes = "multipart/form-data")
