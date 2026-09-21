@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import ru.corelia.auth.AuthContext;
 import ru.corelia.http.ApiRequest;
@@ -68,6 +69,29 @@ public class CoreController {
                                 "POST",
                                 requests.body(r),
                                 requests.auth(r)));
+    }
+
+    @PostMapping(value = "/documents/{type}/stream", consumes = "multipart/form-data")
+    public ResponseEntity<JsonNode> createStream(
+            @PathVariable String type,
+            @RequestParam String requestId,
+            @RequestParam String attributes,
+            @RequestParam MultipartFile file,
+            HttpServletRequest request)
+            throws java.io.IOException {
+        try (var content = file.getInputStream()) {
+            return ResponseEntity.status(201)
+                    .body(
+                            services.callMultipart(
+                                    "document",
+                                    "/internal/v1/documents/" + encode(type) + "/stream",
+                                    "POST",
+                                    java.util.Map.of("requestId", requestId, "attributes", attributes),
+                                    fallback(file.getOriginalFilename(), "attachment.bin"),
+                                    fallback(file.getContentType(), "application/octet-stream"),
+                                    content,
+                                    requests.auth(request)));
+        }
     }
 
     @GetMapping("/documents/{type}/{id}")
@@ -148,9 +172,38 @@ public class CoreController {
                 .body(array(attachments.upload(type, id, requests.body(r), auth)));
     }
 
+    @PostMapping(value = "/documents/{type}/{id}/attachments/stream", consumes = "multipart/form-data")
+    public ResponseEntity<JsonNode> uploadStream(
+            @PathVariable String type,
+            @PathVariable String id,
+            @RequestParam String requestId,
+            @RequestParam MultipartFile file,
+            HttpServletRequest r)
+            throws java.io.IOException {
+        var auth = requests.auth(r);
+        services.call("document", path(type) + "/" + encode(id), "GET", null, auth);
+        try (var body = file.getInputStream()) {
+            return ResponseEntity.status(201)
+                    .body(
+                            services.callMultipart(
+                                    "attachment",
+                                    "/internal/v1/documents/"
+                                            + encode(type)
+                                            + "/"
+                                            + encode(id)
+                                    + "/attachments/stream",
+                                    "POST",
+                                    requestId,
+                                    fallback(file.getOriginalFilename(), "attachment.bin"),
+                                    fallback(file.getContentType(), "application/octet-stream"),
+                                    body,
+                                    auth));
+        }
+    }
+
     @RequestMapping(
             value = "/attachments/{id}",
-            method = {RequestMethod.GET, RequestMethod.PUT, RequestMethod.DELETE})
+            method = {RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<byte[]> file(@PathVariable String id, HttpServletRequest r) {
         var response =
                 services.raw(
@@ -173,6 +226,35 @@ public class CoreController {
                 .firstValue("content-disposition")
                 .ifPresent(v -> result.header("Content-Disposition", v));
         return result.body(response.body());
+    }
+
+    @GetMapping("/attachments/{id}")
+    public ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> download(
+            @PathVariable String id, HttpServletRequest r) {
+        var response = services.rawStream("attachment", "/internal/v1/attachments/" + encode(id), requests.auth(r));
+        var result = ResponseEntity.ok().header("Content-Type", response.headers().firstValue("content-type").orElse("application/octet-stream"));
+        response.headers().firstValue("content-disposition").ifPresent(value -> result.header("Content-Disposition", value));
+        return result.body(output -> { try (var input = response.body()) { input.transferTo(output); } });
+    }
+
+    @PutMapping(value = "/attachments/{id}/stream", consumes = "multipart/form-data")
+    public JsonNode replaceStreamMultipart(
+            @PathVariable String id,
+            @RequestParam String requestId,
+            @RequestParam MultipartFile file,
+            HttpServletRequest r)
+            throws java.io.IOException {
+        try (var body = file.getInputStream()) {
+            return services.callMultipart(
+                    "attachment",
+                    "/internal/v1/attachments/" + encode(id) + "/stream",
+                    "PUT",
+                    requestId,
+                    fallback(file.getOriginalFilename(), "attachment.bin"),
+                    fallback(file.getContentType(), "application/octet-stream"),
+                    body,
+                    requests.auth(r));
+        }
     }
 
     @GetMapping("/attachments/{id}/versions")
