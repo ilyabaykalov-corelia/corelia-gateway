@@ -144,6 +144,11 @@ public class CoreController {
         return doc;
     }
 
+    @GetMapping("/documents/{type}/{id}/history")
+    public JsonNode documentHistory(@PathVariable String type, @PathVariable String id, HttpServletRequest r) {
+        return services.call("document", path(type) + "/" + encode(id) + "/history", "GET", null, requests.auth(r));
+    }
+
     @PatchMapping("/documents/{type}/{id}")
     public JsonNode update(
             @PathVariable String type, @PathVariable String id, HttpServletRequest r) {
