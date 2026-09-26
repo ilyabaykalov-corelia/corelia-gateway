@@ -36,3 +36,6 @@ GET карточки возвращает `attachments`, `workflow`, `availableA
 карточку в формате React (`documentTypeId`, `contractNumber`, `status`, `documentStatus` и другие поля).
 Если поиск задачи вернул ошибку, отличную от 404, она передаётся клиенту.
 Решение о допустимости действия и изменение статуса выполняет платформа через БП.
+# Документация
+
+Внешний API и границы gateway описаны в [docs/README.md](docs/README.md).
