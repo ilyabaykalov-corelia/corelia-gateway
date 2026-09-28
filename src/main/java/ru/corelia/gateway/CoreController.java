@@ -36,6 +36,12 @@ public class CoreController {
                 "document", "/internal/v1/document-types", "GET", null, requests.auth(r));
     }
 
+    @PostMapping("/admin/migrations/legacy-blobs")
+    public JsonNode migrateLegacyBlobs(HttpServletRequest r) {
+        return services.call(
+                "attachment", "/internal/v1/migrations/legacy-blobs", "POST", object(), requests.auth(r));
+    }
+
     @GetMapping("/document-types/{type}")
     public JsonNode definition(@PathVariable String type, HttpServletRequest r) {
         return services.call("document", "/internal/v1/document-types/" + encode(type), "GET", null, requests.auth(r));
