@@ -42,6 +42,12 @@ public class CoreController {
                 "attachment", "/internal/v1/migrations/legacy-blobs", "POST", object(), requests.auth(r));
     }
 
+    @GetMapping("/admin/workflows")
+    public JsonNode workflows(HttpServletRequest r) {
+        return services.call(
+                "workflow", "/internal/v1/admin/workflows", "GET", null, requests.auth(r));
+    }
+
     @GetMapping("/document-types/{type}")
     public JsonNode definition(@PathVariable String type, HttpServletRequest r) {
         return services.call("document", "/internal/v1/document-types/" + encode(type), "GET", null, requests.auth(r));
