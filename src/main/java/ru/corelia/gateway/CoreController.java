@@ -83,6 +83,11 @@ public class CoreController {
         return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/export", "GET", null, requests.auth(r));
     }
 
+    @GetMapping("/admin/workflows/{key}/audit")
+    public JsonNode workflowAudit(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/audit", "GET", null, requests.auth(r));
+    }
+
     @GetMapping("/document-types/{type}")
     public JsonNode definition(@PathVariable String type, HttpServletRequest r) {
         return services.call("document", "/internal/v1/document-types/" + encode(type), "GET", null, requests.auth(r));
