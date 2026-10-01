@@ -73,6 +73,11 @@ public class CoreController {
         return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", null, requests.auth(r));
     }
 
+    @PostMapping("/admin/workflows/{key}/retire")
+    public JsonNode retireWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/retire", "POST", null, requests.auth(r));
+    }
+
     @PostMapping("/admin/workflows/{key}/import")
     public JsonNode importWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
         return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/import", "POST", requests.body(r), requests.auth(r));
