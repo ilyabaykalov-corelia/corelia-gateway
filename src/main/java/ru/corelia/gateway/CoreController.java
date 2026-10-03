@@ -363,6 +363,11 @@ public class CoreController {
             services.call("workflow", "/internal/v1/tasks/" + encode(id), "GET", null, auth);
         } catch (ApiException error) {
             if (error.status() != 404) throw error;
+            try {
+                return services.call("workflow", "/internal/v1/tasks/" + encode(id) + "/complete", "POST", body, auth);
+            } catch (ApiException completionError) {
+                if (completionError.status() != 404) throw completionError;
+            }
             JsonNode identity = services.call("document", "/internal/v1/documents/by-id/" + encode(id), "GET", null, auth);
             String type = text(identity, "typeCode");
             JsonNode card = document(type, id, auth);
