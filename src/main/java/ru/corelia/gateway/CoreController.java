@@ -36,6 +36,68 @@ public class CoreController {
                 "document", "/internal/v1/document-types", "GET", null, requests.auth(r));
     }
 
+    @PostMapping("/admin/migrations/legacy-blobs")
+    public JsonNode migrateLegacyBlobs(HttpServletRequest r) {
+        return services.call(
+                "attachment", "/internal/v1/migrations/legacy-blobs", "POST", object(), requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows")
+    public JsonNode workflows(HttpServletRequest r) {
+        return services.call(
+                "workflow", "/internal/v1/admin/workflows", "GET", null, requests.auth(r));
+    }
+
+    @PostMapping("/admin/workflows")
+    public JsonNode createWorkflow(HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows", "POST", requests.body(r), requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows/{key}")
+    public JsonNode workflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key), "GET", null, requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows/{key}/view")
+    public JsonNode workflowView(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/view", "GET", null, requests.auth(r));
+    }
+
+    @PutMapping("/admin/workflows/{key}/draft")
+    public JsonNode saveWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/draft", "PUT", requests.body(r), requests.auth(r));
+    }
+
+    @PostMapping("/admin/workflows/{key}/validate")
+    public JsonNode validateWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/validate", "POST", null, requests.auth(r));
+    }
+
+    @PostMapping("/admin/workflows/{key}/publish")
+    public JsonNode publishWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", null, requests.auth(r));
+    }
+
+    @PostMapping("/admin/workflows/{key}/retire")
+    public JsonNode retireWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/retire", "POST", null, requests.auth(r));
+    }
+
+    @PostMapping("/admin/workflows/{key}/import")
+    public JsonNode importWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/import", "POST", requests.body(r), requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows/{key}/export")
+    public JsonNode exportWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/export", "GET", null, requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows/{key}/audit")
+    public JsonNode workflowAudit(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/audit", "GET", null, requests.auth(r));
+    }
+
     @GetMapping("/document-types/{type}")
     public JsonNode definition(@PathVariable String type, HttpServletRequest r) {
         return services.call("document", "/internal/v1/document-types/" + encode(type), "GET", null, requests.auth(r));
@@ -306,6 +368,11 @@ public class CoreController {
             services.call("workflow", "/internal/v1/tasks/" + encode(id), "GET", null, auth);
         } catch (ApiException error) {
             if (error.status() != 404) throw error;
+            try {
+                return services.call("workflow", "/internal/v1/tasks/" + encode(id) + "/complete", "POST", body, auth);
+            } catch (ApiException completionError) {
+                if (completionError.status() != 404) throw completionError;
+            }
             JsonNode identity = services.call("document", "/internal/v1/documents/by-id/" + encode(id), "GET", null, auth);
             String type = text(identity, "typeCode");
             JsonNode card = document(type, id, auth);

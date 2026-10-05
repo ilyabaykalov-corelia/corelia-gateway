@@ -1,41 +1,20 @@
 # corelia-gateway
 
-Внешний универсальный API Corelia и агрегация ответов сервисов для React-клиента.
+Единственная публичная прикладная точка Corelia: `/api/core/v1`. Gateway
+проверяет JWT, принимает запросы browser/API clients и вызывает внутренние
+document-, workflow- и attachment-service через mTLS. Он не является
+владельцем document state, business permissions или BPMN transition.
 
-Java 25, Spring Boot 4.0.8, Maven. Комментарии и документация — на русском языке.
-
-## Сборка и запуск
-
-Это отдельный Git-репозиторий сервиса внутри рабочего каталога Corelia. Для сборки пока требуются соседний родительский `corelia-parent` и библиотеки corelia-common. Из каталога сервиса:
+В Compose gateway слушает host port `7170`; внутренние сервисы не публикуют
+business ports на host. Для запуска необходимы JWT issuer/JWKS/audiences,
+CORS origin и сертификаты для внутренних вызовов. `MAX_BODY_SIZE_MB` задаёт
+JSON body limit, `CORELIA_UPSTREAM_MAX_RESPONSE_SIZE_MB` — максимум upstream
+ответа.
 
 ```bash
-mvn -f ../pom.xml -pl corelia-gateway -am package -DskipTests
+mvn -pl corelia-gateway -am test
+./scripts/up.sh
 ```
 
-Локальное окружение запускается из общей папки Corelia командой `./scripts/up.sh`. Сертификаты и адреса сервисов настраиваются через Compose и переменные окружения. Секреты и результаты сборки в репозиторий не включаются.
-
-Для сборки отдельно от общей папки потребуется публикация родительского POM и библиотек в Maven-репозиторий. Общая Docker-конфигурация находится в родительском репозитории Corelia.
-
-## Документация рабочего окружения
-
-- [Архитектура](../docs/architecture.md)
-- [API](../docs/api.md)
-- [Локальная эксплуатация](../docs/operations.md)
-
-Правила изменения документов принадлежат document-service; постоянное хранение находится в DataSpace/DAM, существующие процессы исполняются платформой. Системные тесты взаимодействия находятся в соседнем модуле `corelia-system-tests`.
-
-## Контракт клиента dev
-
-Внешние маршруты используют только `/api/core/v1`; legacy-контроллеров нет.
-Поддерживаются история документов `/documents/{type}/{id}/versions` и история файлов `/attachments/{id}/versions`.
-GET карточки возвращает `attachments`, `workflow`, `availableActions` и `executor`.
-
-Стабильный React отправляет в `POST /tasks/{id}/action` ID задачи из очереди,
-а из карточки — ID документа. Для ID документа gateway проверяет доступ к карточке,
-получает активную задачу у workflow-service, передаёт действие и возвращает обновлённую
-карточку в формате React (`documentTypeId`, `contractNumber`, `status`, `documentStatus` и другие поля).
-Если поиск задачи вернул ошибку, отличную от 404, она передаётся клиенту.
-Решение о допустимости действия и изменение статуса выполняет платформа через БП.
-# Документация
-
-Внешний API и границы gateway описаны в [docs/README.md](docs/README.md).
+Полный внешний контракт: [API](../docs/api.md); маршруты web-клиента:
+[corelia-web](../corelia-web/README.md).
