@@ -87,7 +87,7 @@ public class CoreController {
 
     @PostMapping("/admin/workflows/{key}/publish")
     public JsonNode publishWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
-        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", null, requests.auth(r));
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", requests.body(r), requests.auth(r));
     }
 
     @PostMapping("/admin/workflows/{key}/retire")
