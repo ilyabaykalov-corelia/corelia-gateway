@@ -63,6 +63,18 @@ public class CoreController {
         return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/view", "GET", null, requests.auth(r));
     }
 
+    @GetMapping("/admin/workflows/{key}/runtime")
+    public JsonNode workflowRuntime(@PathVariable String key, HttpServletRequest r) {
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/runtime", "GET", null, requests.auth(r));
+    }
+
+    @GetMapping("/admin/workflows/{key}/active-documents")
+    public JsonNode workflowActiveDocuments(@PathVariable String key, @RequestParam(required = false) String activityId, HttpServletRequest r) {
+        String path = "/internal/v1/admin/workflows/" + encode(key) + "/active-documents";
+        if (activityId != null && !activityId.isBlank()) path += "?activityId=" + encode(activityId);
+        return services.call("workflow", path, "GET", null, requests.auth(r));
+    }
+
     @PutMapping("/admin/workflows/{key}/draft")
     public JsonNode saveWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
         return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/draft", "PUT", requests.body(r), requests.auth(r));
@@ -75,7 +87,7 @@ public class CoreController {
 
     @PostMapping("/admin/workflows/{key}/publish")
     public JsonNode publishWorkflowDraft(@PathVariable String key, HttpServletRequest r) {
-        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", null, requests.auth(r));
+        return services.call("workflow", "/internal/v1/admin/workflows/" + encode(key) + "/publish", "POST", requests.body(r), requests.auth(r));
     }
 
     @PostMapping("/admin/workflows/{key}/retire")
